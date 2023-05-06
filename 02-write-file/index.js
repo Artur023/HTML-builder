@@ -19,7 +19,6 @@ stdin.on("data", (data) => {
   if (data.toString().trim() === "exit") {
     process.exit();
   }
-
   fs.appendFile(path.join(__dirname, "new-text.txt"), data, (err) => {
     if (err) throw err;
   });
