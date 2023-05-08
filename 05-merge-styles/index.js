@@ -18,13 +18,11 @@ async function getFiles(way) {
     for (const file of files) {
       //проверка на css
       if (file.isFile() === true && path.extname(file.name) === ".css") {
-        console.log(file);
         //streams
         const input = fs.createReadStream(
           path.join(__dirname, "styles", file.name),
           "utf-8"
         );
-        // input.pipe(output);
         input.on("data", (data) => {
           output.write(data.toString());
         });
