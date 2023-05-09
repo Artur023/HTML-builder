@@ -1,24 +1,6 @@
 const fs = require("fs");
 const path = require("path");
 const { readdir } = require("node:fs/promises");
-// В файле index.js директории 06-build-page напишите скрипт который:
-
-// Создаёт папку project-dist.
-// Заменяет шаблонные теги в файле template.html с названиями файлов из папки components (пример:{{section}}) на содержимое одноимённых компонентов и сохраняет результат в project-dist/index.html.
-// Собирает в единый файл стили из папки styles и помещает их в файл project-dist/style.css.
-// Копирует папку assets в project-dist/assets
-
-// Требования
-//  После завершения работы скрипта должна быть создана папка project-dist
-//  В папке project-dist должны находиться файлы index.html и style.css
-//  В папке project-dist должна находиться папка assets являющаяся точной копией папки assets находящейся в 06-build-page
-//  Запрещается использование fsPromises.cp()
-//  Файл index.html должен содержать разметку являющуюся результатом замены шаблонных тегов в файле template.html
-//  Файл style.css должен содержать стили собранные из файлов папки styles
-//  При добавлении компонента в папку и соответствующего тега в исходный файл template.html повторное выполнение скрипта приведёт файл index.html в папке project-dist в актуальное состояние перезаписав его. Файл style.css и папка assets так же должны поддерживать актуальное состояние
-//  При записи двух и более шаблонных тегов подряд в файле template.html, разделенных между собой только пробелами без переноса строки, не должно возникать ошибок выполнения кода. Например, {{about}} {{articles}} должно расцениваться как 2 отдельных компонента
-//  Исходный файл template.html не должен быть изменён в ходе выполнения скрипта
-//  Запись в шаблон содержимого любых файлов кроме файлов с расширением .html является ошибкой
 
 const wayStyles = path.join(__dirname, "styles");
 const output = fs.createWriteStream(
@@ -104,29 +86,48 @@ async function getAssets(old, dist) {
   }
 }
 
-// function changeTemp() {
-//   const input = fs.createReadStream(
-//     path.join(__dirname, "template.htm"),
-//     "utf-8"
-//   );
-//   const output = fs.createWriteStream(
-//     path.join(__dirname, "project-dist", "index.html")
-//   );
-//   let code = "";
-//   input.on("data", (data) => {
-//     code = data.toString();
-//   });
-//   function change(item) {
-//     return `{{${item}}}`;
-//   }
-//   const components = path.join(__dirname, "components");
-//   fs.readdir(components, { withFileTypes: true }, err, (data) => {
-//     if (err) {
-//       throw new Error("problems with readdir components");
-//     }
-//     let elems = [];
-//     for (const elem of data) {
-//       console.log("elem", elem);
-//     }
-//   });
-// }
+(async function changeTemp() {
+  const input = fs.createReadStream(
+    path.join(__dirname, "template.html"),
+    "utf-8"
+  );
+  const output = fs.createWriteStream(
+    path.join(__dirname, "project-dist", "index.html")
+  );
+  let code = "";
+  input.on("data", (data) => {
+    code = data.toString();
+  });
+  function changer(item) {
+    return `{{${item}}}`;
+  }
+
+  const components = path.join(__dirname, "components");
+
+  fs.readdir(components, { withFileTypes: true }, (err, data) => {
+    if (err) {
+      throw new Error("problems with readdir components");
+    }
+    let elemi = [];
+    let filesName = [];
+    for (const elem of data) {
+      const fileName = elem.name;
+      filesName.push(fileName);
+      elemi.push(changer(fileName.slice(0, elem.name.indexOf("."))));
+    }
+    for (let i = 0; i < elemi.length; i++) {
+      let tagName = elemi[i];
+      const readableStream = fs.createReadStream(
+        path.join(__dirname, "components", filesName[i]),
+        "utf-8"
+      );
+
+      readableStream.on("data", (data) => {
+        code = code.replace(tagName, data);
+        if (i === elemi.length - 1 && !code.includes(tagName)) {
+          output.write(code);
+        }
+      });
+    }
+  });
+})();
